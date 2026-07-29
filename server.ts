@@ -167,7 +167,11 @@ Retorne estritamente o JSON sem marcações extras de markdown ou formatação f
         return res.status(400).json({ error: 'CNPJ deve conter 14 dígitos.' });
       }
 
-      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjClean}`);
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjClean}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        }
+      });
       if (!response.ok) {
         if (response.status === 404) {
           return res.status(404).json({ error: 'CNPJ não encontrado na Receita Federal.' });
