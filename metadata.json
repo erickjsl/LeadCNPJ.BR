@@ -1,0 +1,6 @@
+{
+  "name": "LeadCNPJ Brasil - Radar de Novas Empresas",
+  "description": "Sistema de inteligência de prospecção B2B para identificar novas empresas e processos de abertura em Caxias do Sul e em todas as cidades do Brasil, com gerador de pitches de abordagem por IA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
