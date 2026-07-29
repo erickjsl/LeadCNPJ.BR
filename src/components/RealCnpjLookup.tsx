@@ -9,7 +9,8 @@ import {
   ExternalLink, 
   RefreshCw, 
   DollarSign, 
-  User 
+  User,
+  FileText
 } from 'lucide-react';
 import { CompanyLead } from '../types';
 import { formatDateBR } from '../utils/formatters';
