@@ -12,6 +12,7 @@ import {
   User 
 } from 'lucide-react';
 import { CompanyLead } from '../types';
+import { formatDateBR } from '../utils/formatters';
 
 interface RealCnpjLookupProps {
   onAddCustomLead: (lead: CompanyLead) => void;
@@ -180,7 +181,7 @@ export const RealCnpjLookup: React.FC<RealCnpjLookupProps> = ({
                   {companyData.descricao_situacao_cadastral || 'ATIVA'}
                 </span>
                 <span className="text-xs text-slate-400">
-                  Abertura em: {companyData.data_inicio_atividade || 'Recente'}
+                  Abertura em: {formatDateBR(companyData.data_inicio_atividade) || 'Recente'}
                 </span>
               </div>
               <h3 className="text-base font-bold text-white mt-1">

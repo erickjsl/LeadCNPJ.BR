@@ -166,6 +166,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               />
             </div>
 
+            <div className="p-3 bg-slate-800/50 border border-blue-500/30 rounded-xl mt-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-2 opacity-10">
+                <Sparkles className="w-12 h-12 text-blue-500" />
+              </div>
+              <label className="block text-blue-300 font-bold mb-1 relative z-10 flex items-center space-x-2">
+                <span>Chave API da Groq (IA)</span>
+              </label>
+              <p className="text-[10px] text-slate-400 mb-2 relative z-10">
+                Necessário para gerar os pitches de vendas com Inteligência Artificial. A chave fica salva apenas no seu navegador.
+              </p>
+              <input
+                type="password"
+                value={formData.groqApiKey || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, groqApiKey: e.target.value }))}
+                placeholder="gsk_..."
+                className="w-full bg-slate-900 border border-blue-500/50 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-blue-400 relative z-10"
+              />
+            </div>
+
           </div>
 
           <div className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between">

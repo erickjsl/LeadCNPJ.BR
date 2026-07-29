@@ -19,6 +19,7 @@ import {
   Search
 } from 'lucide-react';
 import { CompanyLead, CRMStatus } from '../types';
+import { formatDateBR } from '../utils/formatters';
 
 interface CompanyDetailModalProps {
   isOpen: boolean;
@@ -182,7 +183,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
 
               <div className="pt-1 border-t border-slate-800">
                 <span className="text-slate-400 block">Data do Registro / Abertura:</span>
-                <span className="font-semibold text-white">{company.dataAbertura}</span>
+                <span className="font-semibold text-white">{formatDateBR(company.dataAbertura)}</span>
               </div>
             </div>
 

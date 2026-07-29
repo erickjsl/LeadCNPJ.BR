@@ -18,6 +18,7 @@ import { PipelineCRM } from './components/PipelineCRM';
 import { RealCnpjLookup } from './components/RealCnpjLookup';
 import { MarketAnalytics } from './components/MarketAnalytics';
 import { UserProfileModal } from './components/UserProfileModal';
+import { LoginScreen } from './components/LoginScreen';
 
 import { 
   Building2, 
@@ -34,6 +35,8 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
   // Active Location (Default: Caxias do Sul - RS)
   const [currentUf, setCurrentUf] = useState<string>('RS');
   const [currentMunicipio, setCurrentMunicipio] = useState<string>('Caxias do Sul');
@@ -158,11 +161,29 @@ export default function App() {
         return false;
       }
 
+      // PeriodoDias (Data de Abertura)
+      if (filters.periodoDias < 365) { // Assuming 365 or a large number means 'all' if we ever add it, but here we just filter by the days.
+        const today = new Date();
+        const openingDate = new Date(l.dataAbertura);
+        
+        // Calculate difference in days
+        const diffTime = Math.abs(today.getTime() - openingDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        if (diffDays > filters.periodoDias) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [leads, filters]);
 
   const newLeadsCount = leads.filter(l => l.pipelineStatus === 'NOVO').length;
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500 selection:text-white flex flex-col">

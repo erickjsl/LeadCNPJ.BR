@@ -8,8 +8,19 @@ export const INITIAL_USER_PROFILE: UserProfileService = {
   companyName: 'Minha Empresa de Serviços',
   serviceType: 'Contabilidade & Alvarás de Funcionamento',
   differentials: 'Atendimento prioritário em Caxias do Sul e região, abertura ágil de inscrições estaduais e emissão de alvará municipal sem burocracia.',
-  phoneWhatsApp: '54999887766'
+  phoneWhatsApp: '54999887766',
+  groqApiKey: ''
 };
+
+const LOCAL_STORAGE_KEY_AUTH = 'leadcnpj_auth_v1';
+
+export function getStoredPassword(): string | null {
+  return localStorage.getItem(LOCAL_STORAGE_KEY_AUTH);
+}
+
+export function saveStoredPassword(password: string): void {
+  localStorage.setItem(LOCAL_STORAGE_KEY_AUTH, password);
+}
 
 const CAXIAS_DO_SUL_BAIRROS = [
   'Centro',
@@ -343,24 +354,127 @@ export function generateLeadsForCity(uf: string, municipio: string): CompanyLead
   return result;
 }
 
+import realLeadsRaw from './leads_reais.json';
+
+// Define the interface for the raw extracted lead
+interface ExtractedLead {
+  cnpj: string;
+  nome_fantasia: string;
+  data_abertura: string;
+  cnae: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+}
+
+// Convert YYYYMMDD to YYYY-MM-DD
+function formatDataAbertura(rawDate: string): string {
+  if (rawDate && rawDate.length === 8) {
+    return `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`;
+  }
+  return getDateDaysAgo(1); // fallback
+}
+
+// Helper to determine sector based on CNAE (rough estimation)
+function determineSector(cnae: string): 'Indústria' | 'Comércio' | 'Serviços' | 'Tecnologia' | 'Alimentação' | 'Saúde' | 'Construção' {
+  if (!cnae) return 'Serviços';
+  const prefix = parseInt(cnae.substring(0, 2), 10);
+  if (prefix >= 10 && prefix <= 33) return 'Indústria';
+  if (prefix >= 41 && prefix <= 43) return 'Construção';
+  if (prefix >= 45 && prefix <= 47) return 'Comércio';
+  if (prefix === 56) return 'Alimentação';
+  if (prefix >= 62 && prefix <= 63) return 'Tecnologia';
+  if (prefix >= 86 && prefix <= 88) return 'Saúde';
+  return 'Serviços';
+}
+
+function mapRealLeadsToAppLeads(rawLeads: ExtractedLead[]): CompanyLead[] {
+  return rawLeads.map((raw, index) => {
+    const setor = determineSector(raw.cnae);
+    return {
+      id: `real-${raw.cnpj.replace(/\D/g, '')}`,
+      cnpj: raw.cnpj,
+      razaoSocial: raw.nome_fantasia, // RFB public data sometimes omits razao_social, using fantasia
+      nomeFantasia: raw.nome_fantasia,
+      uf: raw.uf,
+      municipio: raw.cidade,
+      bairro: raw.bairro,
+      logradouro: 'Não informado',
+      numero: 'S/N',
+      cep: '00000-000',
+      dataAbertura: formatDataAbertura(raw.data_abertura),
+      statusAbertura: 'CNPJ_EMITIDO', // as it's from RFB
+      cnaeCodigo: raw.cnae,
+      cnaeDescricao: `CNAE: ${raw.cnae}`,
+      setor: setor,
+      capitalSocial: 0,
+      porte: 'Demais',
+      socioAdministrador: {
+        nome: 'Sócio/Administrador',
+        qualificacao: 'Administrador',
+        telefone: '',
+        email: ''
+      },
+      scoreLead: 80 + (index % 20),
+      pipelineStatus: 'NOVO',
+      notas: 'Lead extraído da base de dados abertos da Receita Federal.',
+      oportunidadesDetectadas: ['Análise Contábil Necessária']
+    };
+  });
+}
+
 // LocalStorage Persistence Handlers
 export function getStoredLeads(uf: string, municipio: string): CompanyLead[] {
   try {
+    // 1. Check if we have real leads from the JSON file for this city
+    const realLeadsParsed = (realLeadsRaw as ExtractedLead[]).filter(
+      l => l.uf.toUpperCase() === uf.toUpperCase() && l.cidade.toUpperCase() === municipio.toUpperCase()
+    );
+
+    let baseLeads: CompanyLead[] = [];
+
+    if (realLeadsParsed && realLeadsParsed.length > 0) {
+      // If we have real leads, use ONLY real leads for this city (don't generate mock data)
+      baseLeads = mapRealLeadsToAppLeads(realLeadsParsed);
+    } else {
+      // Fallback: Use mock data generation if no real data is available for this city yet
+      baseLeads = generateLeadsForCity(uf, municipio);
+    }
+
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_LEADS);
+    
+    // If we have nothing in localStorage, save and return our base (real or mock)
     if (!raw) {
-      const initial = generateLeadsForCity(uf, municipio);
-      localStorage.setItem(LOCAL_STORAGE_KEY_LEADS, JSON.stringify(initial));
-      return initial;
+      localStorage.setItem(LOCAL_STORAGE_KEY_LEADS, JSON.stringify(baseLeads));
+      return baseLeads;
     }
+
     const parsed: CompanyLead[] = JSON.parse(raw);
-    const cityLeads = parsed.filter(l => l.uf === uf && l.municipio.toLowerCase() === municipio.toLowerCase());
-    if (cityLeads.length === 0) {
-      const generated = generateLeadsForCity(uf, municipio);
-      const combined = [...parsed, ...generated];
-      localStorage.setItem(LOCAL_STORAGE_KEY_LEADS, JSON.stringify(combined));
-      return generated;
+    let cityLeadsFromStorage = parsed.filter(l => l.uf === uf && l.municipio.toLowerCase() === municipio.toLowerCase());
+    
+    // Auto-heal: If we have real leads from JSON, purge mock leads for this city from localStorage
+    if (realLeadsParsed && realLeadsParsed.length > 0) {
+      cityLeadsFromStorage = cityLeadsFromStorage.filter(l => l.id.startsWith('real-'));
     }
-    return cityLeads;
+
+    // If the storage doesn't have leads for this city (or they were just purged)
+    if (cityLeadsFromStorage.length === 0) {
+      const otherCitiesLeads = parsed.filter(l => l.uf !== uf || l.municipio.toLowerCase() !== municipio.toLowerCase());
+      const combined = [...otherCitiesLeads, ...baseLeads];
+      localStorage.setItem(LOCAL_STORAGE_KEY_LEADS, JSON.stringify(combined));
+      return baseLeads;
+    }
+
+    // Merge: we want to keep status updates from LocalStorage, but incorporate new real leads if any arrived
+    const storageIds = new Set(cityLeadsFromStorage.map(l => l.id));
+    const newLeadsToAdd = baseLeads.filter(l => !storageIds.has(l.id));
+    
+    // Rewrite localStorage without the mock leads for this city, but with the new real leads
+    const otherCitiesLeads = parsed.filter(l => l.uf !== uf || l.municipio.toLowerCase() !== municipio.toLowerCase());
+    const finalCityLeads = [...cityLeadsFromStorage, ...newLeadsToAdd];
+    localStorage.setItem(LOCAL_STORAGE_KEY_LEADS, JSON.stringify([...otherCitiesLeads, ...finalCityLeads]));
+    
+    return finalCityLeads;
   } catch (e) {
     console.error('Erro ao ler leads do localStorage:', e);
     return generateLeadsForCity(uf, municipio);

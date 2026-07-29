@@ -1,14 +1,13 @@
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
+
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
+import * as cheerio from 'cheerio';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -20,6 +19,33 @@ async function startServer() {
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
+
+  // Função auxiliar de scraping (Web Spy)
+  async function duckDuckGoSearch(query: string): Promise<string> {
+    try {
+      console.log(`[Web Spy] Pesquisando: ${query}`);
+      const response = await fetch('https://html.duckduckgo.com/html/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ q: query }).toString()
+      });
+      if (!response.ok) return 'Nenhum resultado encontrado (Erro na busca).';
+      const html = await response.text();
+      const $ = cheerio.load(html);
+      let resultsText = '';
+      $('.result__body').slice(0, 4).each((_i, el) => {
+        const title = $(el).find('.result__title').text().trim();
+        const snippet = $(el).find('.result__snippet').text().trim();
+        if (title && snippet) {
+          resultsText += `\n- Título: ${title}\n  Resumo: ${snippet}\n`;
+        }
+      });
+      return resultsText || 'Nenhum resumo útil encontrado.';
+    } catch (e) {
+      console.error('[Web Spy] Erro na busca:', e);
+      return 'Erro ao tentar pesquisar na internet.';
+    }
+  }
 
   // AI Pitch & Commercial Outreach Generator using Gemini SDK
   app.post('/api/generate-pitch', async (req, res) => {
@@ -38,28 +64,22 @@ async function startServer() {
         userProfile,
         channel = 'whatsapp',
         tone = 'consultative',
-        customNotes = ''
+        customNotes = '',
+        useWebSpy = false
       } = req.body;
 
       if (!companyName) {
         return res.status(400).json({ error: 'Nome da empresa é obrigatório.' });
       }
 
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = userProfile?.groqApiKey || process.env.GROQ_API_KEY;
       if (!apiKey) {
         return res.status(500).json({
-          error: 'Chave GEMINI_API_KEY não configurada no servidor. Por favor, verifique as configurações em Secrets.'
+          error: 'Chave API da Groq não encontrada. Configure-a no seu Perfil na interface ou no arquivo .env.'
         });
       }
 
-      const ai = new GoogleGenAI({
-        apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build'
-          }
-        }
-      });
+      const groq = new Groq({ apiKey });
 
       const prompt = `
 Você é um especialista em Vendas B2B e Prospecção de Clientes no Brasil.
@@ -82,7 +102,20 @@ PERFIL DO PROSPECTOR (SERVIÇO OFERECIDO):
 PARÂMETROS DA MENSAGEM:
 - Canal de Envio: ${channel} (Ex: whatsapp = mensagem curta e direta com emojis adequados; email = assunto impactante + e-mail profissional; call = script para ligação telefônica de 60s; proposal = apresentação executiva)
 - Tom de Voz: ${tone} (consultivo, direto, amigável ou formal)
-- Observações adicionais: ${customNotes || 'Nenhuma'}
+- Observações adicionais: ${customNotes || 'Nenhuma'}`;
+
+      if (useWebSpy) {
+        const searchTerm = `"${tradeName || companyName}" ${city} ${uf}`;
+        const searchResults = await duckDuckGoSearch(searchTerm);
+        prompt += `
+
+CONTEXTO ADICIONAL DA INTERNET (WEB SPY RESULTADOS):
+Use essas informações (se forem relevantes para a empresa) para criar uma abordagem extremamente personalizada que mostre que você pesquisou sobre eles:
+${searchResults}
+`;
+      }
+
+      prompt += `
 
 INSTRUÇÕES DE RESPOSTA:
 Forneça a resposta em formato JSON válido com a seguinte estrutura:
@@ -96,16 +129,14 @@ Forneça a resposta em formato JSON válido com a seguinte estrutura:
 Retorne estritamente o JSON sem marcações extras de markdown ou formatação fora do JSON.
 `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.7
-        }
+      const response = await groq.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: 'llama-3.1-8b-instant',
+        temperature: 0.7,
+        response_format: { type: 'json_object' }
       });
 
-      const text = response.text || '';
+      const text = response.choices[0]?.message?.content || '';
       let parsed;
       try {
         parsed = JSON.parse(text);

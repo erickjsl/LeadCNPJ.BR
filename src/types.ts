@@ -59,6 +59,7 @@ export interface UserProfileService {
   serviceType: string; // e.g., 'Contabilidade & Planejamento Tributário', 'Criação de Sites & Marketing Digital', 'Sistemas de TI e Redes', etc.
   differentials: string;
   phoneWhatsApp: string;
+  groqApiKey?: string;
 }
 
 export interface FilterState {

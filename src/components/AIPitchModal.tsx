@@ -11,7 +11,9 @@ import {
   PhoneCall, 
   FileText,
   User,
-  AlertCircle
+  AlertCircle,
+  Search,
+  EyeOff
 } from 'lucide-react';
 import { CompanyLead, UserProfileService, PitchResult } from '../types';
 
@@ -31,6 +33,7 @@ export const AIPitchModal: React.FC<AIPitchModalProps> = ({
   const [channel, setChannel] = useState<'whatsapp' | 'email' | 'call' | 'proposal'>('whatsapp');
   const [tone, setTone] = useState<'consultative' | 'direct' | 'friendly' | 'formal'>('consultative');
   const [customNotes, setCustomNotes] = useState<string>('');
+  const [useWebSpy, setUseWebSpy] = useState<boolean>(false);
   
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +75,8 @@ export const AIPitchModal: React.FC<AIPitchModalProps> = ({
           userProfile: userProfile,
           channel: channel,
           tone: tone,
-          customNotes: customNotes
+          customNotes: customNotes,
+          useWebSpy: useWebSpy
         })
       });
 
@@ -138,6 +142,27 @@ export const AIPitchModal: React.FC<AIPitchModalProps> = ({
           
           {/* Options Toolbar: Channel & Tone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-850 p-3.5 rounded-xl border border-slate-800">
+            
+            {/* Modo Espião Toggle (Span entire width on mobile, 1 col on desktop) */}
+            <div className="sm:col-span-2 flex items-center justify-between bg-slate-900 border border-slate-700/50 p-3 rounded-lg hover:border-slate-600 transition-colors cursor-pointer" onClick={() => setUseWebSpy(!useWebSpy)}>
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-lg ${useWebSpy ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
+                  {useWebSpy ? <Search className="w-5 h-5 animate-pulse" /> : <EyeOff className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-white flex items-center">
+                    Modo Espião (Pesquisa Web)
+                    {useWebSpy && <span className="ml-2 px-2 py-0.5 text-[10px] uppercase font-bold bg-indigo-500/20 text-indigo-400 rounded">Ativado</span>}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Pesquisa na internet sobre a empresa antes de gerar o texto.</p>
+                </div>
+              </div>
+              
+              {/* Custom Toggle Switch */}
+              <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useWebSpy ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useWebSpy ? 'translate-x-6' : 'translate-x-1'}`} />
+              </div>
+            </div>
             
             {/* Channel selection */}
             <div>
@@ -241,8 +266,10 @@ export const AIPitchModal: React.FC<AIPitchModalProps> = ({
           {loading && (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
               <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
-              <div className="text-sm font-semibold text-white">Analisando CNAE, setor e localização em {company.municipio}...</div>
-              <p className="text-xs text-slate-400">A IA Gemini está formulando a mensagem de maior conversão...</p>
+              <div className="text-sm font-semibold text-white">
+                {useWebSpy ? `Pesquisando ${company.nomeFantasia || company.razaoSocial} na web...` : `Analisando CNAE, setor e localização em ${company.municipio}...`}
+              </div>
+              <p className="text-xs text-slate-400">A IA está formulando a mensagem de maior conversão...</p>
             </div>
           )}
 

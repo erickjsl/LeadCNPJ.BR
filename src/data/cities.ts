@@ -77,6 +77,12 @@ export const CIDADES_POR_ESTADO: Record<string, CityInfo[]> = {
     { nome: 'Belo Horizonte', uf: 'MG', empresasAbertasMesAtual: 2400, processosAndamento: 550, populacaoAproximada: 2500000 },
     { nome: 'Uberlândia', uf: 'MG', empresasAbertasMesAtual: 680, processosAndamento: 140, populacaoAproximada: 699000 },
     { nome: 'Juiz de Fora', uf: 'MG', empresasAbertasMesAtual: 390, processosAndamento: 85, populacaoAproximada: 573000 }
+  ],
+  GO: [
+    { nome: 'Goiânia', uf: 'GO', empresasAbertasMesAtual: 1850, processosAndamento: 410, populacaoAproximada: 1530000 },
+    { nome: 'Caldas Novas', uf: 'GO', destaque: true, empresasAbertasMesAtual: 140, processosAndamento: 35, populacaoAproximada: 95000 },
+    { nome: 'Aparecida de Goiânia', uf: 'GO', empresasAbertasMesAtual: 610, processosAndamento: 130, populacaoAproximada: 527000 },
+    { nome: 'Anápolis', uf: 'GO', empresasAbertasMesAtual: 420, processosAndamento: 95, populacaoAproximada: 398000 }
   ]
 };
 

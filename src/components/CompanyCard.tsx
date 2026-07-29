@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CompanyLead, CRMStatus } from '../types';
+import { formatDateBR } from '../utils/formatters';
 
 interface CompanyCardProps {
   company: CompanyLead;
@@ -130,7 +131,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             <span>•</span>
             <span className="flex items-center space-x-1">
               <Calendar className="w-3 h-3 text-slate-500" />
-              <span>Abertura: {company.dataAbertura}</span>
+              <span>Abertura: {formatDateBR(company.dataAbertura)}</span>
             </span>
           </div>
         </div>
