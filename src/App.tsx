@@ -107,7 +107,29 @@ export default function App() {
   };
 
   const handleAddCustomLead = (newLead: CompanyLead) => {
-    const updated = [newLead, ...leads];
+    let updated = [...leads];
+    const existingIndex = updated.findIndex(l => l.cnpj === newLead.cnpj || l.id === newLead.id);
+    
+    if (existingIndex >= 0) {
+      const existing = updated[existingIndex];
+      const mergedLead = {
+        ...existing,
+        ...newLead,
+        id: existing.id, // maintain original id
+        pipelineStatus: existing.pipelineStatus, // maintain current CRM status
+        contatadoEm: existing.contatadoEm, // maintain contact date
+        scoreLead: existing.scoreLead, // maintain original score
+        oportunidadesDetectadas: existing.oportunidadesDetectadas, // maintain opps
+        notas: `✅ [Dados enriquecidos via Receita Federal em ${new Date().toLocaleDateString('pt-BR')}]\n\n${existing.notas || ''}`
+      };
+      
+      // Remove from current position and move to top
+      updated.splice(existingIndex, 1);
+      updated.unshift(mergedLead);
+    } else {
+      updated.unshift(newLead);
+    }
+    
     setLeads(updated);
     saveStoredLeads(updated);
   };
