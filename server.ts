@@ -81,7 +81,7 @@ async function startServer() {
 
       const groq = new Groq({ apiKey });
 
-      const prompt = `
+      let prompt = `
 Você é um especialista em Vendas B2B e Prospecção de Clientes no Brasil.
 Gere uma mensagem de abordagem comercial para uma empresa recém-criada / em processo de abertura.
 
