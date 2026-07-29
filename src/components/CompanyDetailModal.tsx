@@ -132,16 +132,27 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                onClose();
-                onGeneratePitch(company);
-              }}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow flex items-center space-x-1.5"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Gerar Pitch IA</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  import('../utils/pdfPrinter').then(m => m.printCompanyPDF(company, false));
+                }}
+                className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow flex items-center space-x-1.5 transition-colors border border-slate-600"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">Salvar PDF</span>
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  onGeneratePitch(company);
+                }}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow flex items-center space-x-1.5 transition-all"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Gerar Pitch IA</span>
+              </button>
+            </div>
           </div>
 
           {/* Grid Information */}

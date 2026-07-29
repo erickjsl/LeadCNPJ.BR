@@ -204,10 +204,19 @@ export const RealCnpjLookup: React.FC<RealCnpjLookupProps> = ({
               {added ? <CheckCircle2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
               <span>{added ? 'Adicionado ao Funil!' : 'Importar para o Radar'}</span>
             </button>
+            <button
+              onClick={() => {
+                import('../utils/pdfPrinter').then(m => m.printCompanyPDF(companyData, true));
+              }}
+              className="px-4 py-2.5 rounded-xl font-bold text-xs flex items-center space-x-2 shadow transition-all bg-slate-700 hover:bg-slate-600 text-white border border-slate-600"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Salvar em PDF</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div>
                 <span className="text-slate-400 block font-semibold">CNAE Principal:</span>
                 <span className="text-slate-200 font-mono">{companyData.cnae_fiscal}</span> - {companyData.cnae_fiscal_descricao}
@@ -217,13 +226,26 @@ export const RealCnpjLookup: React.FC<RealCnpjLookupProps> = ({
                 <span className="text-slate-400 block font-semibold">Porte / Capital Social:</span>
                 <span className="text-white font-bold">{companyData.porte || 'ME'}</span> (R$ {companyData.capital_social?.toLocaleString('pt-BR') || '0'})
               </div>
+              
+              <div>
+                <span className="text-slate-400 block font-semibold">Natureza Jurídica:</span>
+                <span className="text-slate-200">{companyData.natureza_juridica || 'Não informada'}</span>
+              </div>
+              
+              <div>
+                <span className="text-slate-400 block font-semibold">Contato:</span>
+                <span className="text-slate-200 block">
+                  Telefone: {[companyData.ddd_telefone_1, companyData.ddd_telefone_2].filter(Boolean).join(' / ') || 'Não informado'}
+                </span>
+                <span className="text-slate-200 block">E-mail: {companyData.email || 'Não informado'}</span>
+              </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div>
                 <span className="text-slate-400 block font-semibold">Endereço Oficial Receita Federal:</span>
                 <span className="text-slate-200">
-                  {companyData.logradouro}, {companyData.numero} - {companyData.bairro}, {companyData.municipio} - {companyData.uf}
+                  {companyData.descricao_tipo_de_logradouro} {companyData.logradouro}, {companyData.numero} - {companyData.bairro}, {companyData.municipio} - {companyData.uf} (CEP: {companyData.cep})
                 </span>
               </div>
 
