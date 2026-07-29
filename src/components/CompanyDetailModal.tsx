@@ -71,6 +71,10 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
     ? company.socioAdministrador.telefone.replace(/\D/g, '')
     : '';
 
+  const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+    `"${company.nomeFantasia || company.razaoSocial}" ${company.municipio} ${company.uf} telefone contato`
+  )}`;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
@@ -221,7 +225,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                 </span>
 
                 <div className="mt-2 space-y-1">
-                  {company.socioAdministrador.telefone && (
+                  {company.socioAdministrador.telefone ? (
                     <div className="flex items-center justify-between text-slate-300">
                       <span className="flex items-center space-x-1">
                         <Phone className="w-3 h-3 text-emerald-400" />
@@ -238,6 +242,16 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                         </a>
                       )}
                     </div>
+                  ) : (
+                    <a
+                      href={googleSearchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-1 text-emerald-400 hover:underline pt-1 text-[11px] font-medium"
+                    >
+                      <Search className="w-3 h-3" />
+                      <span>Buscar telefone no Google</span>
+                    </a>
                   )}
 
                   {company.socioAdministrador.email && (
