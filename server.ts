@@ -167,6 +167,41 @@ Retorne estritamente o JSON sem marcações extras de markdown ou formatação f
         return res.status(400).json({ error: 'CNPJ deve conter 14 dígitos.' });
       }
 
+      // Função helper para buscar no publica.cnpj.ws e mapear os dados
+      const fetchCnpjWsFallback = async () => {
+        const fallbackResponse = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjClean}`);
+        if (fallbackResponse.ok) {
+          const wsData = await fallbackResponse.json();
+          return {
+            cnpj: wsData.estabelecimento.cnpj,
+            razao_social: wsData.razao_social,
+            nome_fantasia: wsData.estabelecimento.nome_fantasia || wsData.razao_social,
+            cnae_fiscal: wsData.estabelecimento.atividade_principal.id,
+            cnae_fiscal_descricao: wsData.estabelecimento.atividade_principal.descricao,
+            data_inicio_atividade: wsData.estabelecimento.data_inicio_atividade,
+            descricao_situacao_cadastral: wsData.estabelecimento.situacao_cadastral?.toUpperCase(),
+            porte: wsData.porte?.descricao || '',
+            capital_social: wsData.capital_social,
+            natureza_juridica: wsData.natureza_juridica?.descricao || '',
+            email: wsData.estabelecimento.email,
+            ddd_telefone_1: wsData.estabelecimento.ddd1 && wsData.estabelecimento.telefone1 ? `${wsData.estabelecimento.ddd1}${wsData.estabelecimento.telefone1}` : '',
+            ddd_telefone_2: wsData.estabelecimento.ddd2 && wsData.estabelecimento.telefone2 ? `${wsData.estabelecimento.ddd2}${wsData.estabelecimento.telefone2}` : '',
+            descricao_tipo_de_logradouro: wsData.estabelecimento.tipo_logradouro,
+            logradouro: wsData.estabelecimento.logradouro,
+            numero: wsData.estabelecimento.numero,
+            bairro: wsData.estabelecimento.bairro,
+            municipio: wsData.estabelecimento.cidade?.nome,
+            uf: wsData.estabelecimento.estado?.sigla,
+            cep: wsData.estabelecimento.cep,
+            qsa: (wsData.socios || []).map((s: any) => ({
+              nome_socio: s.nome,
+              qualificacao_socio: s.qualificacao_socio?.descricao || 'Sócio'
+            }))
+          };
+        }
+        return null;
+      };
+
       let response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjClean}`, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
@@ -177,40 +212,9 @@ Retorne estritamente o JSON sem marcações extras de markdown ou formatação f
         // Se a BrasilAPI der Too Many Requests (429) ou Forbbiden (403), tenta o fallback
         if (response.status === 429 || response.status === 403) {
           console.log(`[CNPJ Lookup] BrasilAPI falhou com ${response.status}. Tentando publica.cnpj.ws como fallback...`);
-          const fallbackResponse = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjClean}`);
-          
-          if (fallbackResponse.ok) {
-            const wsData = await fallbackResponse.json();
-            
-            // Mapeando a resposta do CNPJ.ws para o formato que o frontend espera (BrasilAPI)
-            const mappedData = {
-              cnpj: wsData.estabelecimento.cnpj,
-              razao_social: wsData.razao_social,
-              nome_fantasia: wsData.estabelecimento.nome_fantasia || wsData.razao_social,
-              cnae_fiscal: wsData.estabelecimento.atividade_principal.id,
-              cnae_fiscal_descricao: wsData.estabelecimento.atividade_principal.descricao,
-              data_inicio_atividade: wsData.estabelecimento.data_inicio_atividade,
-              descricao_situacao_cadastral: wsData.estabelecimento.situacao_cadastral?.toUpperCase(),
-              porte: wsData.porte?.descricao || '',
-              capital_social: wsData.capital_social,
-              natureza_juridica: wsData.natureza_juridica?.descricao || '',
-              email: wsData.estabelecimento.email,
-              ddd_telefone_1: wsData.estabelecimento.ddd1 && wsData.estabelecimento.telefone1 ? `${wsData.estabelecimento.ddd1}${wsData.estabelecimento.telefone1}` : '',
-              ddd_telefone_2: wsData.estabelecimento.ddd2 && wsData.estabelecimento.telefone2 ? `${wsData.estabelecimento.ddd2}${wsData.estabelecimento.telefone2}` : '',
-              descricao_tipo_de_logradouro: wsData.estabelecimento.tipo_logradouro,
-              logradouro: wsData.estabelecimento.logradouro,
-              numero: wsData.estabelecimento.numero,
-              bairro: wsData.estabelecimento.bairro,
-              municipio: wsData.estabelecimento.cidade?.nome,
-              uf: wsData.estabelecimento.estado?.sigla,
-              cep: wsData.estabelecimento.cep,
-              qsa: (wsData.socios || []).map((s: any) => ({
-                nome_socio: s.nome,
-                qualificacao_socio: s.qualificacao_socio?.descricao || 'Sócio'
-              }))
-            };
-            
-            return res.json(mappedData);
+          const fallbackData = await fetchCnpjWsFallback();
+          if (fallbackData) {
+            return res.json(fallbackData);
           }
         }
         
@@ -222,6 +226,23 @@ Retorne estritamente o JSON sem marcações extras de markdown ou formatação f
       }
 
       const data = await response.json();
+      
+      // Se a BrasilAPI retornou os dados, mas sem telefone, tentamos enriquecer com o CNPJ.ws
+      if (!data.ddd_telefone_1 && !data.ddd_telefone_2) {
+        console.log(`[CNPJ Lookup] BrasilAPI retornou sem telefone. Tentando enriquecer via publica.cnpj.ws...`);
+        const fallbackData = await fetchCnpjWsFallback();
+        if (fallbackData) {
+          // Mescla os dados, priorizando os dados do fallback para campos vazios
+          return res.json({
+            ...data,
+            ddd_telefone_1: fallbackData.ddd_telefone_1 || data.ddd_telefone_1,
+            ddd_telefone_2: fallbackData.ddd_telefone_2 || data.ddd_telefone_2,
+            email: fallbackData.email || data.email,
+            natureza_juridica: fallbackData.natureza_juridica || data.natureza_juridica
+          });
+        }
+      }
+
       return res.json(data);
     } catch (error: any) {
       console.error('Erro na consulta CNPJ:', error);
